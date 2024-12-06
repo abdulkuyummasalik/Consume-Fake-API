@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Manajemen Produk</title>
+    <!-- Bootstrap CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <!-- Font Awesome -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+  </head>
+  <body class="container py-5">
+    <h1 class="text-center mb-4">Sistem Manajemen Produk</h1>
+
+    <!-- Formulir Pencarian -->
+    <form id="formPencarian" class="mb-4" onsubmit="return cariProduk()">
+      <div class="input-group">
+        <input
+          type="text"
+          id="inputCari"
+          class="form-control"
+          placeholder="Cari produk..."
+          value=""
+        />
+        <button class="btn btn-primary" type="submit">
+          <i class="fas fa-search"></i> Cari
+        </button>
+      </div>
+    </form>
+
+    <!-- Tombol Tambah Produk -->
+    <div class="text-center mb-4">
+      <button class="btn btn-primary" onclick="bukaModal()">
+        <i class="fas fa-plus"></i> Tambah Produk Baru
+      </button>
+    </div>
+
+    <!-- Daftar Produk -->
+    <div id="daftarProduk" class="row g-4">
+      <!-- Produk akan dimuat secara dinamis di sini -->
+    </div>
+
+    <!-- Modal Tambah Produk -->
+    <div class="modal fade" id="modalTambahProduk" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Tambah Produk Baru</h5>
+            <button
+              type="button"
+              class="btn-close"
+              onclick="tutupModal()"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <input
+              type="text"
+              id="inputNama"
+              class="form-control mb-2"
+              placeholder="Nama Produk"
+              required
+            />
+            <input
+              type="number"
+              id="inputHarga"
+              class="form-control mb-2"
+              placeholder="Harga"
+              required
+            />
+            <textarea
+              id="inputDeskripsi"
+              class="form-control"
+              placeholder="Deskripsi"
+              required
+            ></textarea>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="tutupModal()">
+              Batal
+            </button>
+            <button class="btn btn-primary" onclick="tambahProduk()">
+              Simpan
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Konfirmasi Hapus -->
+    <div class="modal fade" id="modalHapusProduk" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Konfirmasi Hapus</h5>
+            <button
+              type="button"
+              class="btn-close"
+              onclick="tutupModalHapus()"
+            ></button>
+          </div>
+          <div class="modal-body">Anda yakin ingin menghapus produk ini?</div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="tutupModalHapus()">
+              Batal
+            </button>
+            <button class="btn btn-danger" onclick="konfirmasiHapus()">
+              Hapus
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+      const URL_DASAR = "https://jsonplaceholder.typicode.com/posts";
+      let idProdukHapus = null;
+
+      function tampilkanPesan(jenis, pesan) {
+        document.querySelectorAll(".alert").forEach((el) => el.remove());
+        let elemenPesan = document.createElement("div");
+        elemenPesan.className = `alert alert-${jenis} alert-dismissible fade show position-fixed top-0 start-0 w-100`;
+        elemenPesan.innerHTML = `
+          <div class="d-flex align-items-center">
+            <i class="fas fa-info-circle me-3"></i>
+            <div>${pesan}</div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>`;
+        document.body.insertAdjacentElement("afterbegin", elemenPesan);
+        setTimeout(() => {
+          elemenPesan.remove();
+        }, 3000);
+      }
+
+      function getQueryParam(param) {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get(param);
+      }
+
+      async function muatProduk() {
+        try {
+          const kataKunci = getQueryParam("q");
+          let url = `${URL_DASAR}?_limit=10`;
+          if (kataKunci) {
+            url += `&q=${encodeURIComponent(kataKunci)}`;
+            document.getElementById("inputCari").value = kataKunci;
+          }
+          const respons = await fetch(url);
+          const produk = await respons.json();
+          const daftarProduk = document.getElementById("daftarProduk");
+          daftarProduk.innerHTML = produk.length
+            ? produk
+                .map(
+                  (item) => `
+                    <div class="col-md-4">
+                      <div class="card h-100">
+                        <div class="card-body">
+                          <h5 class="card-title">${item.title}</h5>
+                          <p class="card-text">${item.body}</p>
+                        </div>
+                        <div class="card-footer d-flex justify-content-between">
+                          <button onclick="siapHapus(${item.id})" class="btn btn-sm btn-danger">
+                            <i class="fas fa-trash"></i> Hapus
+                          </button>
+                          <span class="badge bg-primary">ID: ${item.id}</span>
+                        </div>
+                      </div>
+                    </div>`
+                )
+                .join("")
+            : "<p class='text-center'>Tidak ada produk yang ditemukan.</p>";
+        } catch (kesalahan) {
+          tampilkanPesan("danger", "Gagal memuat produk");
+        }
+      }
+
+      function bukaModal() {
+        new bootstrap.Modal(
+          document.getElementById("modalTambahProduk")
+        ).show();
+      }
+
+      function tutupModal() {
+        bootstrap.Modal.getInstance(
+          document.getElementById("modalTambahProduk")
+        ).hide();
+      }
+
+      async function tambahProduk() {
+        const nama = document.getElementById("inputNama").value;
+        const harga = document.getElementById("inputHarga").value;
+        const deskripsi = document.getElementById("inputDeskripsi").value;
+        try {
+          await fetch(URL_DASAR, {
+            method: "POST",
+            body: JSON.stringify({
+              title: nama,
+              body: deskripsi,
+              price: harga,
+            }),
+            headers: {
+              "Content-type": "application/json; charset=UTF-8",
+            },
+          });
+          tutupModal();
+          tampilkanPesan("success", "Produk berhasil ditambahkan");
+          muatProduk();
+        } catch (kesalahan) {
+          tampilkanPesan("danger", "Gagal menambah produk");
+        }
+      }
+
+      function siapHapus(id) {
+        idProdukHapus = id;
+        new bootstrap.Modal(document.getElementById("modalHapusProduk")).show();
+      }
+
+      function tutupModalHapus() {
+        bootstrap.Modal.getInstance(
+          document.getElementById("modalHapusProduk")
+        ).hide();
+      }
+
+      async function konfirmasiHapus() {
+        if (!idProdukHapus) return;
+        try {
+          await fetch(`${URL_DASAR}/${idProdukHapus}`, {
+            method: "DELETE",
+          });
+          tutupModalHapus();
+          tampilkanPesan("warning", "Produk berhasil dihapus");
+          muatProduk();
+        } catch (kesalahan) {
+          tampilkanPesan("danger", "Gagal menghapus produk");
+        }
+      }
+
+      function cariProduk() {
+        const kataKunci = document.getElementById("inputCari").value.trim();
+        const newUrl = new URL(window.location.href);
+        if (kataKunci) {
+          newUrl.searchParams.set("q", kataKunci);
+        } else {
+          newUrl.searchParams.delete("q");
+        }
+        window.history.pushState({}, "", newUrl);
+        muatProduk();
+        return false;
+      }
+
+      muatProduk();
+    </script>
+  </body>
+</html>
